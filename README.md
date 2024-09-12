@@ -21,7 +21,7 @@ This guide explains how to integrate Google Sign-In with Firebase and use Google
 
 Add the following dependencies to your `build.gradle` files.
 
-**Project-level `build.gradle` (usually in the root directory):**
+Project-level `build.gradle` (usually in the root directory):**
 
 ```
 plugins {
@@ -30,7 +30,7 @@ plugins {
 }
 ```
 
-**App-level `build.gradle` (usually in the app directory):
+App-level `build.gradle` (usually in the app directory):
 
 ```
 plugins {
