@@ -107,7 +107,7 @@ private fun handleSignInResult(
 }
 ```
 
-### 3.2. After successfully sign in with Google create a folder in drive
+### 3.2.  Authenticate with Firebase Using Google
 
 ```
 private fun firebaseAuthWithGoogle(
@@ -115,108 +115,109 @@ private fun firebaseAuthWithGoogle(
     activity: MainActivity,
 ) {
     val credential = GoogleAuthProvider.getCredential(idToken, null)
-    FirebaseAuth
-        .getInstance()
-        .signInWithCredential(credential)
+    FirebaseAuth.getInstance().signInWithCredential(credential)
         .addOnCompleteListener(activity) { task ->
             if (task.isSuccessful) {
                 val account = GoogleSignIn.getLastSignedInAccount(activity)
                 account?.let {
-                    // Run Google Drive operations on a background thread
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            val googleAccountCredential =
-                                GoogleAccountCredential.usingOAuth2(
-                                    activity,
-                                    listOf(Scopes.DRIVE_FILE),
-                                )
-                            googleAccountCredential.selectedAccount = it.account
-                            val driveService =
-                                Drive
-                                    .Builder(
-                                        NetHttpTransport(),
-                                        GsonFactory(),
-                                        googleAccountCredential,
-                                    ).setApplicationName("Your project name")
-                                    .build()
-
-                            createFolderInGoogleDrive(driveService, activity)
-
-                            withContext(Dispatchers.Main) {
-                                Log.d("GoogleDrive", "Folder creation successful")
-                            }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                Log.e("GoogleDrive", "Error creating folder: ${e.message}")
-                            }
-                        }
-                    }
+                    // Proceed to Google Drive API operations
+                    initGoogleDriveService(it, activity)
                 }
             } else {
                 Log.w("GoogleSignIn", "signInWithCredential:failure", task.exception)
             }
         }
 }
+```
 
+### 3.3. Initialize Google Drive API Service
+
+```
+private fun initGoogleDriveService(account: GoogleSignInAccount, activity: MainActivity) {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val googleAccountCredential = GoogleAccountCredential.usingOAuth2(
+                activity, listOf(Scopes.DRIVE_FILE)
+            )
+            googleAccountCredential.selectedAccount = account.account
+
+            val driveService = Drive.Builder(
+                NetHttpTransport(), GsonFactory(), googleAccountCredential
+            ).setApplicationName("Your Project Name").build()
+
+            // Call the method to create folder in Google Drive
+            createFolderInGoogleDrive(driveService, activity)
+
+            withContext(Dispatchers.Main) {
+                Log.d("GoogleDrive", "Drive service initialized successfully")
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Log.e("GoogleDrive", "Error initializing Drive service: ${e.message}")
+            }
+        }
+    }
+}
+
+```
+### 3.4. Create Folder in Google Drive
+
+```
 private fun createFolderInGoogleDrive(
     driveService: Drive,
     context: MainActivity,
 ) {
-    val metadata = File()
-    metadata.name = "Backup Folder"
-    metadata.mimeType = "application/vnd.google-apps.folder"
+    val metadata = File().apply {
+        name = "Backup Folder"
+        mimeType = "application/vnd.google-apps.folder"
+    }
 
-    val folder =
-        driveService
-            .files()
-            .create(metadata)
-            .setFields("id")
-            .execute()
+    val folder = driveService.files().create(metadata).setFields("id").execute()
 
-    uploadPhotoToGoogleDrive(
+    Log.d("GoogleDrive", "Folder ID: ${folder.id}")
+
+    // Call upload method after folder is created
+    uploadFileToGoogleDrive(
         driveService,
         folder.id,
-        "photo.jpg", //Any kind of file
+        "photo.jpg", // Replace with the desired file name
         Uri.parse("android.resource://YourApplicationPackage/drawable/yourfilename"),
         context,
     )
-    Log.d("GoogleDrive", "Folder ID: ${folder.id}")
 }
 ```
 
-### 3.3. Upload data to Drive
+### 3.5. Upload File to Google Drive
 
 ```
-private fun uploadPhotoToGoogleDrive(
+private fun uploadFileToGoogleDrive(
     driveService: Drive,
     folderId: String,
     fileName: String,
-    imageUri: Uri,
+    fileUri: Uri,
     context: Context,
 ) {
-    val fileMetadata = File()
-    fileMetadata.name = fileName
-    fileMetadata.parents = listOf(folderId) // Place the file in the specific folder
-    fileMetadata.mimeType =
-        "image/jpg" // You can use "image/png" or other types based on your image type
+    val fileMetadata = File().apply {
+        name = fileName
+        parents = listOf(folderId) // Place the file in the specific folder
+        mimeType = "image/jpg" // Use appropriate MIME type based on your file
+    }
 
-    // Open the image file as InputStream
-    val inputStream = context.contentResolver.openInputStream(imageUri)
-    val fileContent = InputStreamContent("image/jpg", inputStream) // Adjust MIME type accordingly
+    val inputStream = context.contentResolver.openInputStream(fileUri)
+    val fileContent = InputStreamContent("image/jpg", inputStream)
 
-    // Upload the file
-    val file =
-        driveService
-            .files()
-            .create(fileMetadata, fileContent)
-            .setFields("id")
-            .execute()
+    val file = driveService.files().create(fileMetadata, fileContent)
+        .setFields("id")
+        .execute()
 
-    Log.d("GoogleDrive", "Photo uploaded with ID: ${file.id}")
+    Log.d("GoogleDrive", "File uploaded with ID: ${file.id}")
 }
 ```
+## Step 4: Enable Google Drive API
 
-Don't forget to enable Google drive api in Api console
+Don't forget to enable the Google Drive API in the Google API Console.
+
+
 
 
 
