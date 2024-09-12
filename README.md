@@ -1,4 +1,4 @@
-# Google Sign-In and Google Drive Integration with Firebase
+# Google Drive Integration with Firebase
 
 This guide explains how to integrate Google Sign-In with Firebase and use Google Drive API to upload data in a Jetpack Compose application.
 
